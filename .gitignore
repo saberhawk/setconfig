@@ -1,0 +1,8 @@
+*.suo
+*.user
+*.sdf
+*.opensdf
+bin
+tmp
+ipch
+*.xml
