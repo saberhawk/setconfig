@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<configuration>
+	<!-- scripts 4.0 build configuration -->
+	<localvar name="%bindir%" value="%scriptsdir%\bin\%config%" />
+	<localvar name="%vfsbindir%" value="%scriptsdir%\VFS\%config% Bin\Win32" />
+	<localvar name="%stockbindir%" value="%rendir%\stock" />
+	
+	<file target="%targetdir%\scripts.dll" 			source="%bindir%\scripts.dll" />
+	<file target="%targetdir%\shaders.dll" 			source="%bindir%\shaders.dll" />
+	<file target="%targetdir%\tt.dll" 				source="%bindir%\tt.dll" />
+	<file target="%targetdir%\bandtest.dll"			source="%bindir%\bandtest.dll" />	
+	<file target="%targetdir%\MemoryManager.dll"	source="%bindir%\MemoryManager.dll" />
+	<file target="%targetdir%\vfs.dll"				source="%vfsbindir%\vfs.dll" />
+	<file target="%targetdir%\scripts2.dll"			source="%stockbindir%\scripts.dll" />
+	<file target="%targetdir%\wwconfig.exe"			source="%bindir%\wwconfig.exe" action="copy" />
+	
+	<file target="%targetdir%\data\fxshared.fxi"	source="%scriptsdir%\shaders\fxshared.fxi"/>
+	<file target="%targetdir%\data\common.fxi"		source="%scriptsdir%\shaders\shaders\common.fxi"/>
+</configuration>

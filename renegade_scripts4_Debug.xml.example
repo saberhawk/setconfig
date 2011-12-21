@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<configuration>
+	<!-- scripts 4.0 debug build configuration -->
+	<!-- edit your working copy of this file to match your install paths -->
+	<localvar name="%config%" value="Debug" />
+	<localvar name="%targetdir%" value="C:\Westwood\Renegade" />
+	<include file="scripts40.xml" />
+</configuration>

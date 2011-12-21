@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<configuration>
+	<localvar name="%scriptsdir%" value="C:\rentools\trunk\scripts" />
+	<localvar name="%rendir%" value="C:\Westwood\Renegade" />
+</configuration>
