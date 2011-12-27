@@ -2,6 +2,7 @@
 #include "setconfig.h"
 #include <vector>
 #include <unordered_map>
+#include <conio.h>
 
 #pragma comment(lib, "XmlLite.lib")
 #pragma comment(lib, "shlwapi.lib")
@@ -149,6 +150,88 @@ HRESULT ParseConfigurationFile(const wchar_t* filename)
 	return S_OK;
 };
 
+int DeleteTargetFile(const wchar_t* target)
+{
+	if (!DeleteFileW(target))
+	{
+		int error = GetLastError();
+		if (error != ERROR_FILE_NOT_FOUND)
+		{
+			printf("Error deleting existing file at '%S', error is %08.8lx\n", target, GetLastError());
+			return -1;
+		}
+	};
+	return 0;
+}
+
+int ProcessFiles()
+{
+	HMODULE kernel32 = LoadLibrary(L"kernel32.dll");
+	typedef BOOLEAN (WINAPI* CREATE_SYMBOLIC_LINK_W)(LPCWSTR lpSymlinkFileName, LPCWSTR lpTargetFileName, DWORD dwFlags);
+	CREATE_SYMBOLIC_LINK_W pfCreateSymbolicLinkW = NULL;
+	if (kernel32 != NULL)
+	{
+		pfCreateSymbolicLinkW = (CREATE_SYMBOLIC_LINK_W) GetProcAddress(kernel32, "CreateSymbolicLinkW");
+	};
+
+	const wchar_t* override_action;
+	auto override_action_it = Variables.find(L"$OverrideAction");
+	if (override_action_it != Variables.end()) override_action = override_action_it->second.c_str();
+	else override_action == nullptr;
+	
+	for (auto file_it = Files.begin(); file_it != Files.end(); ++file_it)
+	{
+		for (auto variable_it = Variables.begin(); variable_it != Variables.end(); ++variable_it)
+		{
+			str_replace(variable_it->first, variable_it->second, file_it->Source);
+			str_replace(variable_it->first, variable_it->second, file_it->Target);
+			str_replace(variable_it->first, variable_it->second, file_it->Action);
+		}
+
+		const wchar_t* action;
+		if (override_action) action = override_action;
+		else action = file_it->Action.c_str();
+
+		const wchar_t* target = file_it->Target.c_str();
+		const wchar_t* source = file_it->Source.c_str();
+
+		if (pfCreateSymbolicLinkW && _wcsicmp(action, L"link") == 0)
+		{
+			if (DeleteTargetFile(target)) return -1;
+			if (!pfCreateSymbolicLinkW(target, source, 0))
+			{
+				printf("Error creating symbolic link at '%S', error is %08.8lx; falling back to file copy\n", target, GetLastError());
+				if (!CopyFileW(source, target, TRUE))
+				{
+					printf("Error copying file at '%S', error is %08.8lx", target, GetLastError());
+					return -1;
+				}
+			}
+		}
+		else if (_wcsicmp(action, L"copy") == 0)
+		{
+			if (DeleteTargetFile(target)) return -1;
+			if (!CopyFileW(file_it->Source.c_str(), file_it->Target.c_str(), TRUE))
+			{
+				printf("Error copying file at '%S', error is %08.8lx", file_it->Target.c_str(), GetLastError());
+				return -1;
+			};
+		}
+		else if (_wcsicmp(action, L"delete") == 0)
+		{
+			if (DeleteTargetFile(target)) return -1;
+		}
+		else
+		{
+			printf("Unknown action for file at '%S', error is %08.8lx\n", file_it->Target.c_str(), GetLastError());
+			return -1;
+		}
+	}
+
+	FreeLibrary(kernel32);
+	return 0;
+}
+
 int wmain(int argc, wchar_t* argv[])
 {
 	if (argc < 2)
@@ -159,7 +242,7 @@ int wmain(int argc, wchar_t* argv[])
 	}
 
 	Variables.insert(std::make_pair(L"$DefaultAction", L"link"));
-	
+
 	HRESULT res = ParseConfigurationFile(L"user.xml");
 	if (FAILED(res) && res != HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
 	{
@@ -183,55 +266,13 @@ int wmain(int argc, wchar_t* argv[])
 		}
 	}
 
-	HMODULE kernel32 = LoadLibrary(L"kernel32.dll");
-	typedef BOOL (WINAPI* CREATE_SYMBOLIC_LINK_W)(LPCWSTR lpSymlinkFileName, LPCWSTR lpTargetFileName, DWORD dwFlags);
-	CREATE_SYMBOLIC_LINK_W pfCreateSymbolicLinkW = NULL;
-	if (kernel32 != NULL)
+	
+	if (!ProcessFiles())
 	{
-		pfCreateSymbolicLinkW = (CREATE_SYMBOLIC_LINK_W) GetProcAddress(kernel32, "CreateSymbolicLinkW");
-	};
-
-	for (auto file_it = Files.begin(); file_it != Files.end(); ++file_it)
-	{
-		for (auto variable_it = Variables.begin(); variable_it != Variables.end(); ++variable_it)
-		{
-			str_replace(variable_it->first, variable_it->second, file_it->Source);
-			str_replace(variable_it->first, variable_it->second, file_it->Target);
-			str_replace(variable_it->first, variable_it->second, file_it->Action);
-		}
-		
-		if (!DeleteFileW(file_it->Target.c_str()))
-		{
-			int error = GetLastError();
-			if (error != ERROR_FILE_NOT_FOUND)
-			{
-				printf("Error deleting existing file at '%S', error is %08.8lx\n", file_it->Target.c_str(), GetLastError());
-				return -1;
-			}
-		};
-
-		if (pfCreateSymbolicLinkW && _wcsicmp(file_it->Action.c_str(), L"link") == 0)
-		{
-			if (!pfCreateSymbolicLinkW(file_it->Target.c_str(), file_it->Source.c_str(), 0))
-			{
-				printf("Error creating symbolic link at '%S', error is %08.8lx; falling back to file copy\n", file_it->Target.c_str(), GetLastError());
-				if (!CopyFileW(file_it->Source.c_str(), file_it->Target.c_str(), TRUE))
-				{
-					printf("Error copying file at '%S', error is %08.8lx", file_it->Target.c_str(), GetLastError());
-					return -1;
-				}
-			}
-		}
-		else if (_wcsicmp(file_it->Action.c_str(), L"copy") == 0)
-		{
-			if (!CopyFileW(file_it->Source.c_str(), file_it->Target.c_str(), TRUE))
-			{
-				printf("Error copying file at '%S', error is %08.8lx", file_it->Target.c_str(), GetLastError());
-				return -1;
-			};
-		};
+		printf("\nPress any key to continue...");
+#pragma warning(suppress: 6031)
+		_getch();
 	}
 
-	FreeLibrary(kernel32);
 	return 0;
 }
