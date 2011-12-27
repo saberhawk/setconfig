@@ -203,7 +203,7 @@ int ProcessFiles()
 				printf("Error creating symbolic link at '%S', error is %08.8lx; falling back to file copy\n", target, GetLastError());
 				if (!CopyFileW(source, target, TRUE))
 				{
-					printf("Error copying file at '%S', error is %08.8lx", target, GetLastError());
+					printf("Error copying file at '%S', error is %08.8lx\n", target, GetLastError());
 					return -1;
 				}
 			}
@@ -213,7 +213,7 @@ int ProcessFiles()
 			if (DeleteTargetFile(target)) return -1;
 			if (!CopyFileW(file_it->Source.c_str(), file_it->Target.c_str(), TRUE))
 			{
-				printf("Error copying file at '%S', error is %08.8lx", file_it->Target.c_str(), GetLastError());
+				printf("Error copying file at '%S', error is %08.8lx\n", file_it->Target.c_str(), GetLastError());
 				return -1;
 			};
 		}
@@ -237,23 +237,26 @@ int wmain(int argc, wchar_t* argv[])
 	if (argc < 2)
 	{
 		printf("setconfig - hook in a set of binary files via symbolic link from an xml config file\n");
-		printf("usage:\nsetconfig configfile \nconfigfile is the input XML file");
+		printf("usage:\nsetconfig configfile \nconfigfile is the input XML file\n");
 		exit(1);
 	}
 
 	Variables.insert(std::make_pair(L"$DefaultAction", L"link"));
 
+	bool error = false;
 	HRESULT res = ParseConfigurationFile(L"user.xml");
 	if (FAILED(res) && res != HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
 	{
-		printf("Unable to open 'user.xml'.");
+		printf("Unable to open 'user.xml'.\n");
+		error = true;
 	}
 
 	for (int i = 1; i < argc; ++i)
 	{
 		if (FAILED(ParseConfigurationFile(argv[i])))
 		{
-			printf("Unable to open '%S'.", argv[i]);
+			printf("Unable to open '%S'.\n", argv[i]);
+			error = true;
 		}
 	}
 
@@ -266,8 +269,12 @@ int wmain(int argc, wchar_t* argv[])
 		}
 	}
 
+	if (ProcessFiles())
+	{
+		error = true;
+	}
 	
-	if (!ProcessFiles())
+	if (error)
 	{
 		printf("\nPress any key to continue...");
 #pragma warning(suppress: 6031)
