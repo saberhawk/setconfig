@@ -177,8 +177,8 @@ int ProcessFiles()
 	const wchar_t* override_action;
 	auto override_action_it = Variables.find(L"$OverrideAction");
 	if (override_action_it != Variables.end()) override_action = override_action_it->second.c_str();
-	else override_action == nullptr;
-	
+	else override_action = nullptr;
+
 	for (auto file_it = Files.begin(); file_it != Files.end(); ++file_it)
 	{
 		for (auto variable_it = Variables.begin(); variable_it != Variables.end(); ++variable_it)
@@ -223,7 +223,7 @@ int ProcessFiles()
 		}
 		else
 		{
-			printf("Unknown action for file at '%S', error is %08.8lx\n", file_it->Target.c_str(), GetLastError());
+			printf("Unknown action for file at '%S'\n", file_it->Target.c_str());
 			return -1;
 		}
 	}
